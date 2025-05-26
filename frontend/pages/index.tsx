@@ -1,33 +1,40 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-interface Source {
-  text: string;
-  score: number;
-  source: string;
+// Define Types for API Responses
+interface UploadedFile {
+  filename: string;
+  doc_id: string;
 }
 
-interface RAGResult {
+interface UploadResponse {
+  uploaded_files: UploadedFile[];
+}
+
+interface QueryResult {
   answer: string;
-  sources: Source[];
+  sources: Array<{
+    text: string;
+    score: number;
+    source: string;
+  }>;
   latency: number;
 }
 
-interface Results {
-  [key: string]: RAGResult;
+interface QueryResponse {
+  [key: string]: QueryResult;
 }
 
 export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
   const [query, setQuery] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
-  const [results, setResults] = useState<Results | null>(null);
+  const [results, setResults] = useState<QueryResponse | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
   const [querying, setQuerying] = useState<boolean>(false);
-  const [uploadedDocs, setUploadedDocs] = useState<
-    { filename: string; doc_id: string }[]
-  >([]);
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedFile[]>([]);
 
+  // Force dark mode on load
   useEffect(() => {
     document.documentElement.classList.add("dark");
     return () => {
@@ -49,11 +56,15 @@ export default function Home() {
     files.forEach((file) => formData.append("files", file));
 
     try {
-      const res = await axios.post("http://localhost:8000/upload/", formData);
+      // Use typed axios response
+      const res = await axios.post<UploadResponse>(
+        "http://localhost:8000/upload/",
+        formData,
+      );
       setUploadedDocs(res.data.uploaded_files);
       alert(`${files.length} file(s) uploaded successfully!`);
     } catch (error) {
-      console.error("Upload failed:", error); // Now using the error
+      console.error("Upload failed:", error);
       alert("Upload failed. Please try again.");
     } finally {
       setUploading(false);
@@ -64,17 +75,20 @@ export default function Home() {
     if (!query.trim()) return alert("Please enter a query.");
     if (models.length === 0)
       return alert("Please select at least one RAG architecture.");
-
     setQuerying(true);
 
     try {
-      const res = await axios.post("http://localhost:8000/query/", {
-        query,
-        models,
-      });
+      // Use typed axios response
+      const res = await axios.post<QueryResponse>(
+        "http://localhost:8000/query/",
+        {
+          query,
+          models,
+        },
+      );
       setResults(res.data);
     } catch (error) {
-      console.error("Query failed:", error); // Now using the error
+      console.error("Query failed:", error);
       alert("Query failed. Please try again.");
     } finally {
       setQuerying(false);
@@ -93,7 +107,7 @@ export default function Home() {
         {/* Header */}
         <section className="text-center">
           <h1 className="text-4xl font-extrabold mb-4 text-indigo-400">
-            RAG Architectures Playground
+            🧠 RAG Architectures Playground
           </h1>
           <p className="text-gray-400">
             Compare different RAG pipelines with multiple PDFs
@@ -208,7 +222,7 @@ export default function Home() {
         {results && (
           <section className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
             <h2 className="text-2xl font-bold mb-6 text-center text-indigo-400">
-              Results Comparison
+              📊 Results Comparison
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
