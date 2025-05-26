@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from "react"; // ✅ Import added
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+
+interface Source {
+  text: string;
+  score: number;
+  source: string;
+}
+
+interface RAGResult {
+  answer: string;
+  sources: Source[];
+  latency: number;
+}
+
+interface Results {
+  [key: string]: RAGResult;
+}
 
 export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState<string>("");
   const [models, setModels] = useState<string[]>([]);
-  const [results, setResults] = useState<any>(null);
-  const [uploading, setUploading] = useState(false);
-  const [querying, setQuerying] = useState(false);
-  const [uploadedDocs, setUploadedDocs] = useState<any[]>([]);
+  const [results, setResults] = useState<Results | null>(null);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [querying, setQuerying] = useState<boolean>(false);
+  const [uploadedDocs, setUploadedDocs] = useState<
+    { filename: string; doc_id: string }[]
+  >([]);
 
-  // Force dark mode on load
   useEffect(() => {
     document.documentElement.classList.add("dark");
     return () => {
@@ -36,6 +53,7 @@ export default function Home() {
       setUploadedDocs(res.data.uploaded_files);
       alert(`${files.length} file(s) uploaded successfully!`);
     } catch (error) {
+      console.error("Upload failed:", error); // Now using the error
       alert("Upload failed. Please try again.");
     } finally {
       setUploading(false);
@@ -46,6 +64,7 @@ export default function Home() {
     if (!query.trim()) return alert("Please enter a query.");
     if (models.length === 0)
       return alert("Please select at least one RAG architecture.");
+
     setQuerying(true);
 
     try {
@@ -55,6 +74,7 @@ export default function Home() {
       });
       setResults(res.data);
     } catch (error) {
+      console.error("Query failed:", error); // Now using the error
       alert("Query failed. Please try again.");
     } finally {
       setQuerying(false);
@@ -192,7 +212,7 @@ export default function Home() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.entries(results).map(([model, res]: any) => (
+              {Object.entries(results).map(([model, res]) => (
                 <div
                   key={model}
                   className="border border-gray-700 rounded-lg p-5 shadow-sm hover:shadow-md transition-all bg-gray-800"
@@ -209,29 +229,6 @@ export default function Home() {
                       <strong>Sources:</strong> {res.sources.length}
                     </p>
                   </div>
-                  {res.sources?.length > 0 ? (
-                    <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-                      {res.sources.map((source: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="text-xs bg-gray-700 p-2 rounded border border-gray-600"
-                        >
-                          <p className="text-gray-300">
-                            {source.text?.substring(0, 100)}...
-                          </p>
-                          {source.score && (
-                            <p className="text-indigo-400 mt-1">
-                              Score: {source.score.toFixed(2)}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 mt-2">
-                      No relevant context found in documents
-                    </p>
-                  )}
 
                   <p className="mb-4 text-gray-100">
                     <strong>Answer:</strong> {res.answer}
@@ -242,7 +239,7 @@ export default function Home() {
                       Context Snippets:
                     </strong>
                     <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
-                      {res.sources.map((source: any, idx: number) => (
+                      {res.sources.map((source, idx) => (
                         <div
                           key={idx}
                           className="text-xs bg-gray-700 p-2 rounded border border-gray-600"
