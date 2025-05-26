@@ -4,6 +4,16 @@ from app.services.pdf_processor import process_pdf
 router = APIRouter()
 
 @router.post("/")
-async def upload_pdf(file: UploadFile = File(...)):
-    doc_id = await process_pdf(file)
-    return {"status": "success", "doc_id": doc_id}
+async def upload_pdfs(files: list[UploadFile] = File(...)):
+    """Handle multiple PDF uploads"""
+    doc_ids = []
+    for file in files:
+        doc_id = await process_pdf(file)
+        doc_ids.append({
+            "filename": file.filename,
+            "doc_id": doc_id
+        })
+    return {
+        "status": "success",
+        "uploaded_files": doc_ids
+    }

@@ -3,45 +3,45 @@ from qdrant_client.models import Distance, VectorParams, PointStruct
 from sentence_transformers import SentenceTransformer
 import uuid
 
-
 client = QdrantClient("localhost", port=6333)
-
-client.recreate_collection(
-    collection_name="docs",
-    vectors_config=VectorParams(size=384, distance=Distance.COSINE)
-)
-
-
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-def store_embeddings(doc_id, chunks, vectors):
+try:
+    client.get_collection("docs")
+except:
+    client.create_collection(
+        collection_name="docs",
+        vectors_config=VectorParams(size=384, distance=Distance.COSINE)
+    )
+
+def store_embeddings(doc_id: str, chunks: list[str], embeddings: list[list[float]]):
+    """Store chunks with metadata in Qdrant"""
     points = [
         PointStruct(
-            id=uuid.uuid5(uuid.NAMESPACE_DNS, f"{doc_id}_{i}"),
-            vector=vec,
-            payload={"text": text}
+            id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{doc_id}_{i}")),
+            vector=embedding,
+            payload={
+                "text": chunk,
+                "doc_id": doc_id,
+                "source": f"Page {i//10 + 1}"  # Simplified page tracking
+            }
         )
-        for i, (vec, text) in enumerate(zip(vectors, chunks))
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
     ]
-    client.upload_points("docs", points)
+    client.upsert(collection_name="docs", points=points)
 
-
-def search_embeddings(query):
-    q_vec = model.encode(query).tolist()
+def search_embeddings(query: str):
+    """Search across all documents with metadata"""
+    q_vec = model.encode([query])[0].tolist()
     hits = client.search(collection_name="docs", query_vector=q_vec, limit=5)
-    return "\n".join([hit.payload["text"] for hit in hits])
 
-
-if __name__ == "__main__":
-
-    doc_id = "example-doc"
-    chunks = ["This is the first chunk.", "Second part of the doc.", "More content here."]
-    vectors = model.encode(chunks).tolist()
-
-
-    store_embeddings(doc_id, chunks, vectors)
-
-
-    print("Search results:")
-    print(search_embeddings("What is in the second part?"))
+    return [
+        {
+            "text": hit.payload["text"],
+            "doc_id": hit.payload["doc_id"],
+            "score": hit.score,
+            "source": hit.payload.get("source", "Unknown")
+        }
+        for hit in hits
+    ]
