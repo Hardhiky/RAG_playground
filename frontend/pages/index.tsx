@@ -107,7 +107,7 @@ export default function Home() {
         {/* Header */}
         <section className="text-center">
           <h1 className="text-4xl font-extrabold mb-4 text-indigo-400">
-            🧠 RAG Architectures Playground
+             RAG Architectures Playground
           </h1>
           <p className="text-gray-400">
             Compare different RAG pipelines with multiple PDFs
@@ -222,7 +222,7 @@ export default function Home() {
         {results && (
           <section className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
             <h2 className="text-2xl font-bold mb-6 text-center text-indigo-400">
-              📊 Results Comparison
+               Results Comparison
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
